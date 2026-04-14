@@ -1,0 +1,38 @@
+{
+  "categories": [
+    {
+      "title": "## Breaking Changes",
+      "labels": ["bump:major", "breaking"]
+    },
+    {
+      "title": "## Features",
+      "labels": ["enhancement"]
+    },
+    {
+      "title": "## Bug Fixes",
+      "labels": ["bug"]
+    },
+    {
+      "title": "## Dependencies",
+      "labels": ["dependencies"]
+    },
+    {
+      "title": "## Other",
+      "labels": []
+    }
+  ],
+  "label_extractor": [
+    {
+      "pattern": "bump:(.*)",
+      "on_property": "labels",
+      "method": "match"
+    }
+  ],
+  "template": "#{{CHANGELOG}}\n\n**Full Changelog**: #{{RELEASE_DIFF}}\n",
+  "pr_template": "- #{{TITLE}} (#{{NUMBER}})",
+  "empty_template": "No notable changes.",
+  "sort": {
+    "order": "ASC",
+    "on_property": "mergedAt"
+  }
+}

@@ -1,0 +1,8 @@
+autoscaler-cloudscale
+.git
+.gitignore
+.dockerignore
+Dockerfile
+Makefile
+OWNERS
+*.md

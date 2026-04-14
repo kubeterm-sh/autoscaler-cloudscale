@@ -1,0 +1,38 @@
+version: 2
+
+builds:
+  - binary: autoscaler-cloudscale
+    main: ./cmd/autoscaler-cloudscale/
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/kubeterm-sh/autoscaler-cloudscale/pkg/version.Version={{.Version}}
+      - -X github.com/kubeterm-sh/autoscaler-cloudscale/pkg/version.Commit={{.ShortCommit}}
+      - -X github.com/kubeterm-sh/autoscaler-cloudscale/pkg/version.BuildDate={{.Date}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+signs:
+  - cmd: cosign
+    args:
+      - sign-blob
+      - --yes
+      - --output-signature=${signature}
+      - ${artifact}
+    artifacts: checksum
+
+changelog:
+  disable: true

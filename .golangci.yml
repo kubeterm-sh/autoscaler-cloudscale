@@ -1,0 +1,114 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    # Correctness
+    - errcheck
+    - govet
+    - staticcheck
+    - bodyclose
+    - nilerr
+    - nilnesserr
+    - sqlclosecheck
+    - durationcheck
+    - noctx
+    - musttag
+
+    # Error handling
+    - errorlint
+    - wrapcheck
+
+    # Style
+    - revive
+    - misspell
+    - dupword
+    - godot
+    - nakedret
+    - nolintlint
+    - errname
+
+    # Code quality
+    - gocritic
+    - unused
+    - ineffassign
+    - unparam
+    - unconvert
+    - prealloc
+    - copyloopvar
+    - intrange
+    - exptostd
+    - fatcontext
+    - perfsprint
+
+    # Modernization
+    - modernize
+
+    # Security
+    - gosec
+
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment # micro-optimization not worth the readability cost
+        - shadow         # too noisy for idiomatic if err := ...; err != nil patterns
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: if-return
+        - name: increment-decrement
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
+    nakedret:
+      max-func-lines: 0
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    gosec:
+      excludes:
+        - G104 # duplicates errcheck
+        - G115 # int conversions are validated at config load time
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    wrapcheck:
+      ignore-sigs:
+        - fmt.Errorf(
+        - status.Errorf(
+        - errors.New(
+      ignore-interface-regexps:
+        - net\.Error
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - wrapcheck
+          - gosec
+          - perfsprint
+      - path: proto/
+        linters:
+          - all
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
