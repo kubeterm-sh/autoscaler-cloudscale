@@ -31,9 +31,9 @@ func New(cfg *config.NodeGroup, client cloudscale.Client) *NodeGroup {
 	return &NodeGroup{cfg: *cfg, client: client}
 }
 
-func (ng *NodeGroup) Name() string             { return ng.cfg.Name }
-func (ng *NodeGroup) MinSize() int             { return ng.cfg.MinSize }
-func (ng *NodeGroup) MaxSize() int             { return ng.cfg.MaxSize }
+func (ng *NodeGroup) Name() string { return ng.cfg.Name }
+func (ng *NodeGroup) MinSize() int { return ng.cfg.MinSize }
+func (ng *NodeGroup) MaxSize() int { return ng.cfg.MaxSize }
 
 func (ng *NodeGroup) TargetSize() int {
 	ng.mu.Lock()

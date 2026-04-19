@@ -44,19 +44,20 @@ func Logging(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler g
 	duration := time.Since(start)
 	code := status.Code(err)
 
-	if err != nil && code == codes.Unimplemented {
+	switch {
+	case err != nil && code == codes.Unimplemented:
 		klog.V(5).InfoS("gRPC call unimplemented",
 			"method", info.FullMethod,
 			"duration", duration,
 		)
-	} else if err != nil {
+	case err != nil:
 		klog.InfoS("gRPC call failed",
 			"method", info.FullMethod,
 			"code", code.String(),
 			"duration", duration,
 			"error", err,
 		)
-	} else {
+	default:
 		klog.V(3).InfoS("gRPC call",
 			"method", info.FullMethod,
 			"code", code.String(),
