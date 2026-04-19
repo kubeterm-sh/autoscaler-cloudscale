@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -171,6 +172,99 @@ func TestAllTags_NilTags(t *testing.T) {
 	tags := (&NodeGroup{Name: "p1"}).AllTags()
 	if len(tags) != 1 || tags["k8s-autoscaler-group"] != "p1" {
 		t.Errorf("tags=%v", tags)
+	}
+}
+
+func TestLoad_UserDataRelativePath(t *testing.T) {
+	dir := t.TempDir()
+	udPath := filepath.Join(dir, "userdata.txt")
+	if err := os.WriteFile(udPath, []byte("#!/bin/bash\necho hello"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfgPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(cfgPath, []byte(`
+nodeGroups:
+  - name: pool1
+    maxSize: 1
+    flavor: flex-4-1
+    image: debian-12
+    zone: rma1
+    volumeSizeGB: 50
+    userData: "@userdata.txt"
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.NodeGroups[0].UserData != "#!/bin/bash\necho hello" {
+		t.Errorf("userData=%q", cfg.NodeGroups[0].UserData)
+	}
+}
+
+func TestValidate_ClusterTagAutoInject(t *testing.T) {
+	cfg := &Config{
+		ClusterTag: "my-cluster",
+		NodeGroups: []NodeGroup{
+			{Name: "a", Flavor: "f", Image: "i", Zone: "z", MaxSize: 1, VolumeSizeGB: 50},
+		},
+	}
+	if err := cfg.validate(); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.NodeGroups[0].Tags["k8s-cluster"] != "my-cluster" {
+		t.Errorf("tags=%v", cfg.NodeGroups[0].Tags)
+	}
+}
+
+func TestValidate_ClusterTagConflict(t *testing.T) {
+	cfg := &Config{
+		ClusterTag: "my-cluster",
+		NodeGroups: []NodeGroup{
+			{
+				Name: "a", Flavor: "f", Image: "i", Zone: "z", MaxSize: 1, VolumeSizeGB: 50,
+				Tags: map[string]string{"k8s-cluster": "other-cluster"},
+			},
+		},
+	}
+	err := cfg.validate()
+	if err == nil {
+		t.Fatal("expected error for conflicting k8s-cluster tag")
+	}
+	if !strings.Contains(err.Error(), "conflicts") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_NetworkUUIDRequiresPrivateNetwork(t *testing.T) {
+	err := (&Config{NodeGroups: []NodeGroup{
+		{
+			Name: "a", Flavor: "f", Image: "i", Zone: "z", MaxSize: 1, VolumeSizeGB: 50,
+			NetworkUUID: "some-uuid", UsePrivateNetwork: false,
+		},
+	}}).validate()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "usePrivateNetwork") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_SubnetUUIDRequiresNetworkUUID(t *testing.T) {
+	err := (&Config{NodeGroups: []NodeGroup{
+		{
+			Name: "a", Flavor: "f", Image: "i", Zone: "z", MaxSize: 1, VolumeSizeGB: 50,
+			SubnetUUID: "some-subnet",
+		},
+	}}).validate()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "networkUUID") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 

@@ -1,3 +1,4 @@
+{{- if not .Values.config.nodeGroups }}{{ fail "config.nodeGroups must be set" }}{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

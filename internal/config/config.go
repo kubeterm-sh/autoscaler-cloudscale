@@ -157,6 +157,9 @@ func (c *Config) validate() error {
 			if ng.Tags == nil {
 				ng.Tags = make(map[string]string)
 			}
+			if existing, ok := ng.Tags["k8s-cluster"]; ok && existing != c.ClusterTag {
+				return fmt.Errorf("nodeGroups[%d] %q: tag k8s-cluster=%q conflicts with clusterTag=%q", i, ng.Name, existing, c.ClusterTag)
+			}
 			ng.Tags["k8s-cluster"] = c.ClusterTag
 		}
 	}

@@ -327,18 +327,35 @@ func TestNodeGroup_Labels_ReturnsCopy(t *testing.T) {
 }
 
 func TestAllocatableResource(t *testing.T) {
+	// systemReserved: cpu=50m, memory=384Mi, ephemeral-storage=256Mi
+	// evictionHard:   memory.available=100Mi, nodefs.available=10%
 	cpu, mem, eph := AllocatableResource(8, 16, 100)
 
-	if m := cpu.MilliValue(); m != 7900 {
-		t.Errorf("cpu=%dm want 7900m", m)
+	if m := cpu.MilliValue(); m != 7950 {
+		t.Errorf("cpu=%dm want 7950m", m)
 	}
-	wantMem := int64(16)*1024*1024*1024 - 100*1024*1024
+	wantMem := int64(16)*1024*1024*1024 - (384+100)*1024*1024
 	if v := mem.Value(); v != wantMem {
 		t.Errorf("mem=%d want %d", v, wantMem)
 	}
-	wantEph := int64(100)*1024*1024*1024 - 1*1024*1024*1024
+	capacity := int64(100) * 1024 * 1024 * 1024
+	wantEph := capacity - 256*1024*1024 - capacity/10
 	if v := eph.Value(); v != wantEph {
 		t.Errorf("eph=%d want %d", v, wantEph)
+	}
+}
+
+func TestAllocatableResource_Clamped(t *testing.T) {
+	cpu, mem, eph := AllocatableResource(0, 0, 0)
+
+	if m := cpu.MilliValue(); m != 0 {
+		t.Errorf("cpu=%dm want 0", m)
+	}
+	if v := mem.Value(); v != 0 {
+		t.Errorf("mem=%d want 0", v)
+	}
+	if v := eph.Value(); v != 0 {
+		t.Errorf("eph=%d want 0", v)
 	}
 }
 

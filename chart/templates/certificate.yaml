@@ -17,7 +17,7 @@ metadata:
     {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
 spec:
   isCA: true
-  commonName: {{ include "autoscaler-cloudscale.fullname" . }}-ca
+  commonName: {{ include "autoscaler-cloudscale.fullname" . | trunc 61 }}-ca
   secretName: {{ include "autoscaler-cloudscale.caSecretName" . }}
   duration: {{ .Values.tls.caDuration }}
   issuerRef:

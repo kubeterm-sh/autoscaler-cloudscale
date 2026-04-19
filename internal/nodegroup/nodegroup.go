@@ -119,7 +119,7 @@ func (ng *NodeGroup) IncreaseSize(ctx context.Context, delta int) error {
 	}
 	metrics.ScaleUpTotal.WithLabelValues(ng.cfg.Name, "success").Inc()
 	metrics.NodeGroupTargetSize.WithLabelValues(ng.cfg.Name).Set(float64(newTarget))
-	metrics.NodeGroupCurrentSize.WithLabelValues(ng.cfg.Name).Set(float64(len(ng.Servers())))
+	metrics.NodeGroupCurrentSize.WithLabelValues(ng.cfg.Name).Set(float64(newTarget))
 	return nil
 }
 
@@ -160,6 +160,7 @@ func (ng *NodeGroup) DeleteNodes(ctx context.Context, uuids []string) error {
 			ng.mu.Lock()
 			ng.targetSize--
 			if ng.targetSize < ng.cfg.MinSize {
+				klog.V(3).InfoS("targetSize clamped to minSize", "nodeGroup", ng.cfg.Name, "targetSize", ng.targetSize, "minSize", ng.cfg.MinSize)
 				ng.targetSize = ng.cfg.MinSize
 			}
 			ng.mu.Unlock()
@@ -168,7 +169,7 @@ func (ng *NodeGroup) DeleteNodes(ctx context.Context, uuids []string) error {
 	wg.Wait()
 
 	metrics.NodeGroupTargetSize.WithLabelValues(ng.cfg.Name).Set(float64(ng.TargetSize()))
-	metrics.NodeGroupCurrentSize.WithLabelValues(ng.cfg.Name).Set(float64(len(ng.Servers())))
+	metrics.NodeGroupCurrentSize.WithLabelValues(ng.cfg.Name).Set(float64(ng.TargetSize()))
 	if len(errs) > 0 {
 		metrics.ScaleDownTotal.WithLabelValues(ng.cfg.Name, "partial_failure").Inc()
 		return fmt.Errorf("failed to delete %d/%d nodes: %v", len(errs), len(uuids), errs)
@@ -247,12 +248,29 @@ func (ng *NodeGroup) Taints() []config.Taint {
 	return ng.cfg.Taints
 }
 
-// AllocatableResource reserves 100m CPU, 100Mi memory, and 1Gi
-// ephemeral storage for system overhead.
+// AllocatableResource estimates allocatable resources using the kubelet formula:
+// Allocatable = Capacity - systemReserved - evictionHard.
+//
+// Assumed defaults:
+//
+//	systemReserved: cpu=50m, memory=384Mi, ephemeral-storage=256Mi
+//	evictionHard:   memory.available=100Mi, nodefs.available=10%
 func AllocatableResource(vcpus, memoryGB, diskSizeGB int) (cpu, memory, ephemeral resource.Quantity) {
-	cpu = *resource.NewMilliQuantity(int64(vcpus*1000-100), resource.DecimalSI)
-	memory = *resource.NewQuantity(int64(memoryGB)*1024*1024*1024-100*1024*1024, resource.BinarySI)
-	ephemeral = *resource.NewQuantity(int64(diskSizeGB)*1024*1024*1024-1*1024*1024*1024, resource.BinarySI)
+	const (
+		cpuReservedMillis = 50                        // systemReserved cpu
+		memReserved       = (384 + 100) * 1024 * 1024 // systemReserved 384Mi + evictionHard 100Mi
+		ephReservedFixed  = 256 * 1024 * 1024         // systemReserved 256Mi
+	)
+	capacityBytes := int64(diskSizeGB) * 1024 * 1024 * 1024
+	ephEviction := capacityBytes / 10 // evictionHard nodefs.available 10%
+
+	cpuMillis := max(int64(vcpus)*1000-cpuReservedMillis, 0)
+	memBytes := max(int64(memoryGB)*1024*1024*1024-memReserved, 0)
+	ephBytes := max(capacityBytes-ephReservedFixed-ephEviction, 0)
+
+	cpu = *resource.NewMilliQuantity(cpuMillis, resource.DecimalSI)
+	memory = *resource.NewQuantity(memBytes, resource.BinarySI)
+	ephemeral = *resource.NewQuantity(ephBytes, resource.BinarySI)
 	return cpu, memory, ephemeral
 }
 
