@@ -1,0 +1,35 @@
+autoscaler-cloudscale deployed.
+
+gRPC service: {{ include "autoscaler-cloudscale.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+{{- if .Values.tls.enabled }}
+TLS: enabled (cert-manager)
+{{- end }}
+
+To connect cluster-autoscaler, mount the cloud-config ConfigMap:
+
+  ConfigMap: {{ include "autoscaler-cloudscale.fullname" . }}-cloud-config
+  Key:       cloud-config.yaml
+
+Example Helm values for the cluster-autoscaler chart:
+
+  cloudProvider: externalgrpc
+  cloudConfigPath: /etc/cloud-config/cloud-config.yaml
+
+  extraVolumes:
+    - name: cloud-config
+      configMap:
+        name: {{ include "autoscaler-cloudscale.fullname" . }}-cloud-config
+{{- if .Values.tls.enabled }}
+    - name: autoscaler-tls
+      secret:
+        secretName: {{ include "autoscaler-cloudscale.tlsSecretName" . }}
+{{- end }}
+
+  extraVolumeMounts:
+    - name: cloud-config
+      mountPath: /etc/cloud-config
+{{- if .Values.tls.enabled }}
+    - name: autoscaler-tls
+      mountPath: /etc/autoscaler-cloudscale/tls
+      readOnly: true
+{{- end }}

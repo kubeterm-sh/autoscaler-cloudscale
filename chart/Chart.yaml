@@ -1,0 +1,14 @@
+apiVersion: v2
+name: autoscaler-cloudscale
+description: Kubernetes Cluster Autoscaler cloud provider for cloudscale.ch (external gRPC)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/kubeterm-sh/autoscaler-cloudscale
+sources:
+  - https://github.com/kubeterm-sh/autoscaler-cloudscale
+keywords:
+  - autoscaler
+  - cloudscale
+  - kubernetes
+  - externalgrpc

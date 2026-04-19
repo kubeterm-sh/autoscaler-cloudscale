@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "autoscaler-cloudscale.fullname" . }}
+  labels:
+    {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "autoscaler-cloudscale.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "autoscaler-cloudscale.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "autoscaler-cloudscale.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --config=/etc/autoscaler-cloudscale/config/config.yaml
+            - --metrics-addr=:{{ .Values.metrics.port }}
+            - -v={{ .Values.logVerbosity }}
+          env:
+            - name: CLOUDSCALE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "autoscaler-cloudscale.apiSecretName" . }}
+                  key: token
+          ports:
+            - name: grpc
+              containerPort: 8086
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/autoscaler-cloudscale/config
+              readOnly: true
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /etc/autoscaler-cloudscale/tls
+              readOnly: true
+            {{- end }}
+            {{- if .Values.machineconfig.enabled }}
+            - name: machineconfig
+              mountPath: /etc/autoscaler-cloudscale/machineconfig
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "autoscaler-cloudscale.fullname" . }}
+        {{- if .Values.tls.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ include "autoscaler-cloudscale.tlsSecretName" . }}
+        {{- end }}
+        {{- if .Values.machineconfig.enabled }}
+        - name: machineconfig
+          secret:
+            secretName: {{ include "autoscaler-cloudscale.machineconfigSecretName" . }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
