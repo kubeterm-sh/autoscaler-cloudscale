@@ -1,0 +1,38 @@
+{{- if not .Values.config.nodeGroups }}{{ fail "config.nodeGroups must be set" }}{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "autoscaler-cloudscale.fullname" . }}
+  labels:
+    {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    listen: {{ .Values.config.listen | quote }}
+    {{- if .Values.config.clusterTag }}
+    clusterTag: {{ .Values.config.clusterTag | quote }}
+    {{- end }}
+    {{- if .Values.tls.enabled }}
+    tls:
+      certFile: /etc/autoscaler-cloudscale/tls/tls.crt
+      keyFile: /etc/autoscaler-cloudscale/tls/tls.key
+      caFile: /etc/autoscaler-cloudscale/tls/ca.crt
+    {{- end }}
+    nodeGroups:
+      {{- toYaml .Values.config.nodeGroups | nindent 6 }}
+---
+{{- if .Values.cloudConfig.create }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "autoscaler-cloudscale.fullname" . }}-cloud-config
+  labels:
+    {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
+data:
+  cloud-config.yaml: |
+    address: "{{ include "autoscaler-cloudscale.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}"
+    {{- if .Values.tls.enabled }}
+    key: /etc/autoscaler-cloudscale/tls/tls.key
+    cert: /etc/autoscaler-cloudscale/tls/tls.crt
+    cacert: /etc/autoscaler-cloudscale/tls/ca.crt
+    {{- end }}
+{{- end }}

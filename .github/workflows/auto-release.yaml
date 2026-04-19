@@ -1,0 +1,27 @@
+name: Auto Release
+
+on:
+  pull_request:
+    types: [opened, reopened, labeled, unlabeled, closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-release:
+    name: Auto Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create version tag
+        uses: projectsyn/pr-label-tag-action@v1
+        with:
+          trigger: release.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

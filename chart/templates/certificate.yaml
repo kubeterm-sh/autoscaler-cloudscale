@@ -1,0 +1,54 @@
+{{- if .Values.tls.enabled }}
+# Requires cert-manager: https://cert-manager.io/docs/installation/
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "autoscaler-cloudscale.fullname" . }}-selfsigned
+  labels:
+    {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "autoscaler-cloudscale.caSecretName" . }}
+  labels:
+    {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
+spec:
+  isCA: true
+  commonName: {{ include "autoscaler-cloudscale.fullname" . | trunc 61 }}-ca
+  secretName: {{ include "autoscaler-cloudscale.caSecretName" . }}
+  duration: {{ .Values.tls.caDuration }}
+  issuerRef:
+    name: {{ include "autoscaler-cloudscale.fullname" . }}-selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "autoscaler-cloudscale.fullname" . }}-ca-issuer
+  labels:
+    {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: {{ include "autoscaler-cloudscale.caSecretName" . }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "autoscaler-cloudscale.tlsSecretName" . }}
+  labels:
+    {{- include "autoscaler-cloudscale.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "autoscaler-cloudscale.tlsSecretName" . }}
+  duration: {{ .Values.tls.certDuration }}
+  renewBefore: {{ .Values.tls.certRenewBefore }}
+  dnsNames:
+    - {{ include "autoscaler-cloudscale.fullname" . }}
+    - {{ include "autoscaler-cloudscale.fullname" . }}.{{ .Release.Namespace }}
+    - {{ include "autoscaler-cloudscale.fullname" . }}.{{ .Release.Namespace }}.svc
+  issuerRef:
+    name: {{ include "autoscaler-cloudscale.fullname" . }}-ca-issuer
+    kind: Issuer
+{{- end }}

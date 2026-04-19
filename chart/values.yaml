@@ -1,0 +1,132 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/kubeterm-sh/autoscaler-cloudscale
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# gRPC service for cluster-autoscaler to connect to.
+service:
+  type: ClusterIP
+  port: 8086
+
+# Metrics HTTP server (Prometheus + healthz).
+metrics:
+  port: 9090
+  serviceMonitor:
+    enabled: false
+    # interval: 30s
+    # scrapeTimeout: 10s
+    # additionalLabels: {}
+
+resources: {}
+  # requests:
+  #   cpu: 50m
+  #   memory: 64Mi
+  # limits:
+  #   memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# -- cloudscale.ch API token. Either set existingSecret or token directly.
+cloudscaleAPI:
+  # Name of an existing Secret with a "token" key.
+  existingSecret: ""
+  # Plain token (only used if existingSecret is empty). Not recommended for production.
+  token: ""
+
+# -- Log verbosity (klog -v flag).
+logVerbosity: 4
+
+# -- mTLS certificates via cert-manager.
+# Requires cert-manager to be installed in the cluster.
+tls:
+  enabled: true
+  # Duration and renewal for the serving certificate.
+  certDuration: 8760h    # 1 year
+  certRenewBefore: 720h  # 30 days
+  # Duration for the self-signed CA certificate.
+  caDuration: 87600h     # 10 years
+
+# -- Machineconfig (cloud-init / ignition) passed as userData to new servers.
+# When enabled, the secret is mounted at /etc/autoscaler-cloudscale/machineconfig/machineconfig.yaml
+# and nodeGroups can reference it via: userData: "@/etc/autoscaler-cloudscale/machineconfig/machineconfig.yaml"
+machineconfig:
+  enabled: false
+  # Name of an existing Secret with a "machineconfig.yaml" key.
+  existingSecret: ""
+  # Inline machineconfig content (only used if existingSecret is empty).
+  content: ""
+  # Example:
+  # content: |
+  #   #cloud-config
+  #   write_files:
+  #     - path: /etc/kubernetes/bootstrap-kubelet.conf
+  #       content: |
+  #         ...
+
+# -- Extra volumes added to the pod.
+extraVolumes: []
+
+# -- Extra volume mounts added to the container.
+extraVolumeMounts: []
+
+# -- autoscaler-cloudscale configuration.
+# This is rendered into a ConfigMap and mounted as config.yaml.
+config:
+  listen: ":8086"
+  # clusterTag: my-cluster
+  nodeGroups: []
+    # - name: worker
+    #   minSize: 0
+    #   maxSize: 10
+    #   flavor: flex-8-2
+    #   image: debian-12
+    #   zone: rma1
+    #   volumeSizeGB: 100
+    #   usePublicNetwork: true
+    #   usePrivateNetwork: false
+    #   sshKeys:
+    #     - my-ssh-key
+    #   tags:
+    #     k8s-cluster: my-cluster
+    #   labels:
+    #     node.kubernetes.io/role: worker
+    #   # userData loads a machineconfig file at server creation time.
+    #   # The @ prefix tells autoscaler-cloudscale to read the file from disk.
+    #   # Mount the file via extraVolumes/extraVolumeMounts above.
+    #   userData: "@/etc/autoscaler-cloudscale/machineconfig/machineconfig.yaml"
+
+# -- Cloud-config for cluster-autoscaler's externalgrpc provider.
+# This ConfigMap is created so you can mount it into the cluster-autoscaler pod.
+# The address is auto-generated from the service name.
+cloudConfig:
+  create: true
