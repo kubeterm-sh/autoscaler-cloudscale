@@ -64,7 +64,8 @@ They run as separate Deployments connected over gRPC with mTLS (certificates man
 ### 1. Deploy autoscaler-cloudscale
 
 ```bash
-helm install autoscaler-cloudscale ./chart \
+helm install autoscaler-cloudscale \
+  oci://ghcr.io/kubeterm-sh/charts/autoscaler-cloudscale \
   --namespace kube-system \
   --set cloudscaleAPI.token="your-token" \
   -f my-values.yaml

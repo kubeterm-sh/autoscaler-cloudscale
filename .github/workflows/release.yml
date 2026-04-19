@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
   id-token: write
 
 jobs:
@@ -48,3 +49,21 @@ jobs:
         with:
           body: ${{ steps.changelog.outputs.changelog }}
           append_body: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set chart version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/^version:.*/version: ${VERSION}/" chart/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${VERSION}\"/" chart/Chart.yaml
+
+      - name: Push Helm chart to GHCR
+        run: |
+          helm package chart
+          helm push autoscaler-cloudscale-*.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
