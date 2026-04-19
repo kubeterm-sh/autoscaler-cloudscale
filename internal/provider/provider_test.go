@@ -439,10 +439,13 @@ func TestProvider_MapServerStatus(t *testing.T) {
 		want   pb.InstanceStatus_InstanceState
 	}{
 		{"running", pb.InstanceStatus_instanceRunning},
-		{"stopped", pb.InstanceStatus_instanceDeleting},
+		{"rescue_running", pb.InstanceStatus_instanceRunning},
 		{"changing", pb.InstanceStatus_instanceCreating},
-		{"unknown", pb.InstanceStatus_instanceCreating},
-		{"", pb.InstanceStatus_instanceCreating},
+		{"stopped", pb.InstanceStatus_unspecified},
+		{"error", pb.InstanceStatus_unspecified},
+		{"paused", pb.InstanceStatus_unspecified},
+		{"unknown", pb.InstanceStatus_unspecified},
+		{"", pb.InstanceStatus_unspecified},
 	}
 
 	for _, tt := range tests {

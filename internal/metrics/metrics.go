@@ -64,12 +64,14 @@ var NodeGroupMaxSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 
 var ScaleUpTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 	Namespace: namespace,
+	Subsystem: "node_group",
 	Name:      "scale_up_total",
 	Help:      "Total scale-up events by node group and result.",
 }, []string{"node_group", "result"})
 
 var ScaleDownTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 	Namespace: namespace,
+	Subsystem: "node_group",
 	Name:      "scale_down_total",
 	Help:      "Total scale-down events by node group and result.",
 }, []string{"node_group", "result"})

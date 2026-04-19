@@ -221,9 +221,15 @@ func (p *Provider) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.Ref
 	if err := p.client.Refresh(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "refreshing cache: %v", err)
 	}
+
+	if err := p.client.RefreshFlavors(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "refreshing flavor cache: %v", err)
+	}
+
 	for _, ng := range p.nodeGroups {
 		ng.SyncTargetSize()
 	}
+
 	return &pb.RefreshResponse{}, nil
 }
 
@@ -263,14 +269,13 @@ func pbNodeGroup(ng *nodegroup.NodeGroup) *pb.NodeGroup {
 func mapServerStatus(serverStatus string) *pb.InstanceStatus {
 	var state pb.InstanceStatus_InstanceState
 	switch serverStatus {
-	case "running":
+	case "running", "rescue_running":
 		state = pb.InstanceStatus_instanceRunning
-	case "stopped":
-		state = pb.InstanceStatus_instanceDeleting
 	case "changing":
 		state = pb.InstanceStatus_instanceCreating
 	default:
-		state = pb.InstanceStatus_instanceCreating
+		klog.V(3).InfoS("unknown/non-running server status", "status", serverStatus)
+		state = pb.InstanceStatus_unspecified
 	}
 	return &pb.InstanceStatus{InstanceState: state}
 }

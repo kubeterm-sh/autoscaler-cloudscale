@@ -124,6 +124,19 @@ func (ng *NodeGroup) IncreaseSize(ctx context.Context, delta int) error {
 }
 
 func (ng *NodeGroup) DeleteNodes(ctx context.Context, uuids []string) error {
+	tagKey, tagVal := ng.cfg.ManagedTag()
+
+	for _, uuid := range uuids {
+		server := ng.client.ServerByUUID(uuid)
+		if server == nil {
+			return fmt.Errorf("server %q not found", uuid)
+		}
+
+		if server.Tags[tagKey] != tagVal {
+			return fmt.Errorf("server %q does not belong to node group %q", uuid, ng.cfg.Name)
+		}
+	}
+
 	klog.InfoS("deleting nodes", "nodeGroup", ng.cfg.Name, "count", len(uuids))
 
 	var (

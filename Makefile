@@ -55,7 +55,7 @@ proto:
 proto-sync:
 	@echo "Fetching latest proto from upstream..."
 	curl -sSfL $(UPSTREAM_PROTO) -o proto/externalgrpc.proto
-	sed -i 's|option go_package = .*|option go_package = "$(GO_PACKAGE)";|' proto/externalgrpc.proto
+	sed 's|option go_package = .*|option go_package = "$(GO_PACKAGE)";|' proto/externalgrpc.proto > proto/externalgrpc.proto.tmp && mv proto/externalgrpc.proto.tmp proto/externalgrpc.proto
 	$(MAKE) proto
 	@echo "Proto synced and regenerated."
 

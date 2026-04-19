@@ -44,7 +44,7 @@ func Logging(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler g
 	duration := time.Since(start)
 	code := status.Code(err)
 
-	if err != nil && code != codes.OK {
+	if err != nil {
 		klog.InfoS("gRPC call failed",
 			"method", info.FullMethod,
 			"code", code.String(),

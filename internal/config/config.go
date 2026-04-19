@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -57,14 +58,14 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("reading config file: %w", err)
 	}
 
-	expanded := os.ExpandEnv(string(data))
-
 	var cfg Config
-	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing config file: %w", err)
 	}
 
-	if err := cfg.resolveUserData(); err != nil {
+	cfg.expandEnv()
+
+	if err := cfg.resolveUserData(path); err != nil {
 		return nil, fmt.Errorf("resolving userData: %w", err)
 	}
 
@@ -76,11 +77,15 @@ func Load(path string) (*Config, error) {
 }
 
 // resolveUserData replaces "@filepath" userData values with file contents.
-func (c *Config) resolveUserData() error {
+func (c *Config) resolveUserData(configPath string) error {
+	baseDir := filepath.Dir(configPath)
 	for i := range c.NodeGroups {
 		ud := c.NodeGroups[i].UserData
 		if len(ud) > 1 && ud[0] == '@' {
 			path := ud[1:]
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(baseDir, path)
+			}
 			data, err := os.ReadFile(path) //nolint:gosec // path from config file userData reference
 			if err != nil {
 				return fmt.Errorf("nodeGroups[%d] %q: reading userData file %q: %w", i, c.NodeGroups[i].Name, path, err)
@@ -91,8 +96,26 @@ func (c *Config) resolveUserData() error {
 	return nil
 }
 
+// expandEnv expands environment variables in fields that support it,
+// deliberately skipping userData and other fields that may contain
+// shell-like syntax (e.g. cloud-init scripts).
+func (c *Config) expandEnv() {
+	c.CloudscaleAPIToken = os.ExpandEnv(c.CloudscaleAPIToken)
+	c.ClusterTag = os.ExpandEnv(c.ClusterTag)
+	c.Listen = os.ExpandEnv(c.Listen)
+	if c.TLS != nil {
+		c.TLS.CertFile = os.ExpandEnv(c.TLS.CertFile)
+		c.TLS.KeyFile = os.ExpandEnv(c.TLS.KeyFile)
+		c.TLS.CAFile = os.ExpandEnv(c.TLS.CAFile)
+	}
+}
+
 func (c *Config) validate() error {
 	c.Listen = cmp.Or(c.Listen, ":8086")
+
+	if c.CloudscaleAPIToken == "" {
+		return errors.New("cloudscaleAPIToken is required")
+	}
 
 	if len(c.NodeGroups) == 0 {
 		return errors.New("at least one node group must be defined")
@@ -129,6 +152,9 @@ func (c *Config) validate() error {
 		}
 		if ng.NetworkUUID != "" && !ng.UsePrivateNetwork {
 			return fmt.Errorf("nodeGroups[%d] %q: networkUUID requires usePrivateNetwork to be true", i, ng.Name)
+		}
+		if ng.SubnetUUID != "" && ng.NetworkUUID == "" {
+			return fmt.Errorf("nodeGroups[%d] %q: subnetUUID requires networkUUID", i, ng.Name)
 		}
 
 		// Auto-inject clusterTag into node group tags so new servers

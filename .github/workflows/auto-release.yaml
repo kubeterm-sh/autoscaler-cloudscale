@@ -21,5 +21,7 @@ jobs:
 
       - name: Create version tag
         uses: projectsyn/pr-label-tag-action@v1
+        with:
+          trigger: release.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
