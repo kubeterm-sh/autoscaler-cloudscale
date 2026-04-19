@@ -6,6 +6,7 @@ on:
     branches: [main]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -22,6 +23,8 @@ jobs:
       - name: Create version tag
         uses: projectsyn/pr-label-tag-action@v1
         with:
-          trigger: release.yml
+          trigger: |
+            Release
+            Docker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
