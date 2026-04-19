@@ -9,7 +9,6 @@ import (
 func TestLoad_Valid(t *testing.T) {
 	cfg, err := Load(writeTemp(t, `
 listen: ":9090"
-cloudscaleAPIToken: test-token
 nodeGroups:
   - name: pool1
     minSize: 0
@@ -42,7 +41,6 @@ nodeGroups:
 
 func TestLoad_Defaults(t *testing.T) {
 	cfg, err := Load(writeTemp(t, `
-cloudscaleAPIToken: test-token
 nodeGroups:
   - name: pool1
     maxSize: 3
@@ -60,9 +58,9 @@ nodeGroups:
 }
 
 func TestLoad_EnvExpansion(t *testing.T) {
-	t.Setenv("TEST_API_TOKEN", "secret-token")
+	t.Setenv("TEST_CLUSTER_TAG", "my-cluster")
 	cfg, err := Load(writeTemp(t, `
-cloudscaleAPIToken: ${TEST_API_TOKEN}
+clusterTag: ${TEST_CLUSTER_TAG}
 nodeGroups:
   - name: pool1
     maxSize: 1
@@ -74,8 +72,8 @@ nodeGroups:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.CloudscaleAPIToken != "secret-token" {
-		t.Errorf("cloudscaleAPIToken=%s", cfg.CloudscaleAPIToken)
+	if cfg.ClusterTag != "my-cluster" {
+		t.Errorf("clusterTag=%s", cfg.ClusterTag)
 	}
 }
 

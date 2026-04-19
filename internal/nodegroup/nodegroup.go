@@ -34,7 +34,6 @@ func New(cfg *config.NodeGroup, client cloudscale.Client) *NodeGroup {
 func (ng *NodeGroup) Name() string             { return ng.cfg.Name }
 func (ng *NodeGroup) MinSize() int             { return ng.cfg.MinSize }
 func (ng *NodeGroup) MaxSize() int             { return ng.cfg.MaxSize }
-func (ng *NodeGroup) Config() config.NodeGroup { return ng.cfg }
 
 func (ng *NodeGroup) TargetSize() int {
 	ng.mu.Lock()
@@ -120,6 +119,7 @@ func (ng *NodeGroup) IncreaseSize(ctx context.Context, delta int) error {
 	}
 	metrics.ScaleUpTotal.WithLabelValues(ng.cfg.Name, "success").Inc()
 	metrics.NodeGroupTargetSize.WithLabelValues(ng.cfg.Name).Set(float64(newTarget))
+	metrics.NodeGroupCurrentSize.WithLabelValues(ng.cfg.Name).Set(float64(len(ng.Servers())))
 	return nil
 }
 
@@ -168,6 +168,7 @@ func (ng *NodeGroup) DeleteNodes(ctx context.Context, uuids []string) error {
 	wg.Wait()
 
 	metrics.NodeGroupTargetSize.WithLabelValues(ng.cfg.Name).Set(float64(ng.TargetSize()))
+	metrics.NodeGroupCurrentSize.WithLabelValues(ng.cfg.Name).Set(float64(len(ng.Servers())))
 	if len(errs) > 0 {
 		metrics.ScaleDownTotal.WithLabelValues(ng.cfg.Name, "partial_failure").Inc()
 		return fmt.Errorf("failed to delete %d/%d nodes: %v", len(errs), len(uuids), errs)

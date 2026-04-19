@@ -24,7 +24,6 @@ type Provider struct {
 
 	client     cloudscale.Client
 	nodeGroups map[string]*nodegroup.NodeGroup
-	cfg        *config.Config
 }
 
 func New(cfg *config.Config, client cloudscale.Client) (*Provider, error) {
@@ -39,7 +38,7 @@ func New(cfg *config.Config, client cloudscale.Client) (*Provider, error) {
 		metrics.NodeGroupMaxSize.WithLabelValues(cfg.NodeGroups[i].Name).Set(float64(cfg.NodeGroups[i].MaxSize))
 	}
 
-	return &Provider{client: client, nodeGroups: ngs, cfg: cfg}, nil
+	return &Provider{client: client, nodeGroups: ngs}, nil
 }
 
 func (p *Provider) NodeGroups(ctx context.Context, req *pb.NodeGroupsRequest) (*pb.NodeGroupsResponse, error) {

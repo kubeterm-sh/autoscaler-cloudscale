@@ -196,13 +196,14 @@ func TestNodeGroup_DeleteNodes(t *testing.T) {
 
 func TestNodeGroup_DeleteNodes_Error(t *testing.T) {
 	ng, mock := newTestGroup(t, 0, 5)
-	mock.DeleteErr = errors.New("api error")
+	mock.AddServer("s1", "n1", map[string]string{"k8s-autoscaler-group": "test-pool"})
 	ng.SetTargetSize(2)
-	if err := ng.DeleteNodes(t.Context(), []string{"x"}); err == nil {
+	mock.DeleteErr = errors.New("api error")
+	if err := ng.DeleteNodes(t.Context(), []string{"s1"}); err == nil {
 		t.Fatal("expected error")
 	}
 	if ng.TargetSize() != 2 {
-		t.Errorf("targetSize should be unchanged")
+		t.Errorf("targetSize should be unchanged, got %d", ng.TargetSize())
 	}
 }
 

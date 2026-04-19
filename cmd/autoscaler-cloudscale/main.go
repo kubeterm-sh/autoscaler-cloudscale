@@ -61,14 +61,9 @@ func run() error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	token := cfg.CloudscaleAPIToken
-
+	token := os.Getenv("CLOUDSCALE_API_TOKEN")
 	if token == "" {
-		token = os.Getenv("CLOUDSCALE_API_TOKEN")
-	}
-
-	if token == "" {
-		return errors.New("cloudscale API token not set: use cloudscaleAPIToken in config or CLOUDSCALE_API_TOKEN env var")
+		return errors.New("CLOUDSCALE_API_TOKEN environment variable is required")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -143,14 +138,14 @@ func run() error {
 		Handler:           httpMux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+	errCh := make(chan error, 2)
 	go func() {
 		klog.InfoS("metrics HTTP server listening", "address", *metricsAddr)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			klog.ErrorS(err, "metrics HTTP server failed")
+			errCh <- fmt.Errorf("metrics HTTP server: %w", err)
 		}
 	}()
-
-	errCh := make(chan error, 1)
 	go func() { errCh <- srv.Serve(lis) }()
 
 	sigCh := make(chan os.Signal, 1)
@@ -161,6 +156,7 @@ func run() error {
 		klog.InfoS("received signal, shutting down", "signal", sig)
 	case err := <-errCh:
 		klog.ErrorS(err, "gRPC server failed")
+		return err
 	}
 
 	healthSrv.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)

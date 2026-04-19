@@ -13,11 +13,10 @@ import (
 )
 
 type Config struct {
-	Listen             string      `yaml:"listen"`
-	TLS                *TLS        `yaml:"tls,omitempty"`
-	CloudscaleAPIToken string      `yaml:"cloudscaleAPIToken,omitempty"`
-	ClusterTag         string      `yaml:"clusterTag,omitempty"` // filters servers by "k8s-cluster=<value>" at API level
-	NodeGroups         []NodeGroup `yaml:"nodeGroups"`
+	Listen     string      `yaml:"listen"`
+	TLS        *TLS        `yaml:"tls,omitempty"`
+	ClusterTag string      `yaml:"clusterTag,omitempty"` // filters servers by "k8s-cluster=<value>" at API level
+	NodeGroups []NodeGroup `yaml:"nodeGroups"`
 }
 
 type TLS struct {
@@ -100,7 +99,6 @@ func (c *Config) resolveUserData(configPath string) error {
 // deliberately skipping userData and other fields that may contain
 // shell-like syntax (e.g. cloud-init scripts).
 func (c *Config) expandEnv() {
-	c.CloudscaleAPIToken = os.ExpandEnv(c.CloudscaleAPIToken)
 	c.ClusterTag = os.ExpandEnv(c.ClusterTag)
 	c.Listen = os.ExpandEnv(c.Listen)
 	if c.TLS != nil {
@@ -112,10 +110,6 @@ func (c *Config) expandEnv() {
 
 func (c *Config) validate() error {
 	c.Listen = cmp.Or(c.Listen, ":8086")
-
-	if c.CloudscaleAPIToken == "" {
-		return errors.New("cloudscaleAPIToken is required")
-	}
 
 	if len(c.NodeGroups) == 0 {
 		return errors.New("at least one node group must be defined")
