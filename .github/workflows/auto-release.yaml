@@ -5,23 +5,29 @@ on:
     types: [opened, reopened, labeled, unlabeled, closed]
     branches: [main]
 
-permissions:
-  actions: write
-  contents: write
-  pull-requests: write
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   auto-release:
     name: Auto Release
     runs-on: ubuntu-latest
+    permissions:
+      actions: write # Trigger downstream release workflows
+      contents: write # Push version tags to repo
+      pull-requests: write # Read PR labels for release trigger
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Create version tag
-        uses: projectsyn/pr-label-tag-action@v1
+        uses: projectsyn/pr-label-tag-action@796e1eaeafa4de313848e03bd5341d55a08a596d # v1
         with:
           trigger: |
             Release
