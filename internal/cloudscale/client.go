@@ -28,14 +28,19 @@ type Client interface {
 
 var _ Client = (*APIClient)(nil)
 
+// flavorCacheTTL controls how long cached flavors are considered fresh.
+// Cloudscale flavors rarely change, so 1 hour avoids unnecessary API calls.
+const flavorCacheTTL = 1 * time.Hour
+
 // APIClient wraps the cloudscale.ch SDK client with cached server and flavor maps.
 type APIClient struct {
 	api        *cloudscale.Client
 	clusterTag string
 
-	mu            sync.RWMutex
-	serversByUUID map[string]*cloudscale.Server
-	flavorsBySlug map[string]*cloudscale.Flavor
+	mu                 sync.RWMutex
+	serversByUUID      map[string]*cloudscale.Server
+	flavorsBySlug      map[string]*cloudscale.Flavor
+	flavorsLastRefresh time.Time
 }
 
 // New creates a new cloudscale API client.
@@ -93,8 +98,16 @@ func (c *APIClient) Refresh(ctx context.Context) error {
 	return nil
 }
 
-// RefreshFlavors reloads the flavor cache.
+// RefreshFlavors reloads the flavor cache if the TTL has expired.
 func (c *APIClient) RefreshFlavors(ctx context.Context) error {
+	c.mu.RLock()
+	fresh := time.Since(c.flavorsLastRefresh) < flavorCacheTTL
+	c.mu.RUnlock()
+	if fresh {
+		klog.V(5).InfoS("flavor cache still fresh, skipping refresh")
+		return nil
+	}
+
 	start := time.Now()
 	flavors, err := c.api.Flavors.List(ctx)
 	duration := time.Since(start).Seconds()
@@ -112,6 +125,7 @@ func (c *APIClient) RefreshFlavors(ctx context.Context) error {
 
 	c.mu.Lock()
 	c.flavorsBySlug = bySlug
+	c.flavorsLastRefresh = time.Now()
 	c.mu.Unlock()
 
 	metrics.CacheFlavorsTotal.Set(float64(len(flavors)))
